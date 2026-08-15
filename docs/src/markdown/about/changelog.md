@@ -5,6 +5,8 @@ icon: lucide/scroll-text
 
 ## 2.10
 
+-   **NEW**: Drop Python 3.10.
+-   **NEW**: Aggressively use possessive quantifiers and atomic groups in CSS pattern parsing to reduce backtracking.
 -   **NEW**: Add new `ignore` option to API methods that allows the specification of specific pseudo-classes to be
     ignored. This can be used to exclude specific pseudo-classes that may present performance issues when accepted
     untrusted user inputs.
