@@ -1,5 +1,6 @@
 """Test attribute selectors."""
 from .. import util
+import soupsieve as sv
 
 
 class TestAttribute(util.TestCase):
@@ -50,3 +51,45 @@ class TestAttribute(util.TestCase):
             ["div", "0", "1", "2", "3", "pre", "4", "6"],
             flags=util.HTML5
         )
+
+    def test_bad_attribute_unclused(self):
+        """Test bad attribute fails for syntax error, not timeout error."""
+
+        import signal
+        import time
+
+        # `SIGALRM` is only available on Unix-like systems. Where it is available, use it as a
+        # hard cutoff so that a regression fails fast instead of hanging the test run.
+        use_alarm = hasattr(signal, 'SIGALRM') and hasattr(signal, 'alarm')
+
+        def timeout_handler(signum, frame):
+            """Raise a timeout error."""
+
+            raise TimeoutError
+
+        # An unterminated quoted attribute value (both quote styles) must fail as a syntax
+        # error immediately instead of sending the pattern into catastrophic backtracking.
+        for selector in ('[a="' + ('x' * 300), "[a='" + ('x' * 300)):
+            old_handler = None
+            if use_alarm:
+                old_handler = signal.signal(signal.SIGALRM, timeout_handler)
+                signal.alarm(3)
+
+            passed = False
+            start = time.time()
+            try:
+                with self.assertRaises(sv.SelectorSyntaxError):
+                    sv.compile(selector)
+                passed = True
+            except TimeoutError:
+                pass
+            finally:
+                elapsed = time.time() - start
+                if use_alarm:
+                    signal.alarm(0)
+                    signal.signal(signal.SIGALRM, old_handler)
+
+            self.assertTrue(passed)
+            # Platforms without `SIGALRM` get no hard cutoff, so check the elapsed time too:
+            # catastrophic backtracking takes seconds while a linear parse takes milliseconds.
+            self.assertLess(elapsed, 3)
